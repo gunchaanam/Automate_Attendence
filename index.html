@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance System</title>
+</head>
+<body>
+    <h1>Student Attendance System</h1>
+
+    <!-- Option 1: Capture image from webcam -->
+    <h2>Capture from Webcam</h2>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="capture">Capture Attendance</button>
+
+    <!-- Option 2: Upload an image file -->
+    <h2>Upload an Image</h2>
+    <input type="file" id="imageUpload" accept="image/*">
+    <button id="uploadImage">Upload and Take Attendance</button>
+
+    <p id="status"></p>
+
+    <script>
+        // Access the device camera and stream to video element
+        const video = document.getElementById('video');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+            })
+            .catch((error) => {
+                console.error("Error accessing webcam: ", error);
+            });
+
+        // Capture image from webcam and send to server
+        document.getElementById('capture').addEventListener('click', async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            const dataURL = canvas.toDataURL('image/png');
+            try {
+                const response = await fetch('/capture', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataURL })
+                });
+                const result = await response.json();
+                document.getElementById('status').innerText = result.message;
+            } catch (error) {
+                console.error('Error capturing image:', error);
+                document.getElementById('status').innerText = "Error capturing image.";
+            }
+        });
+
+        // Upload image and send to server for attendance
+        document.getElementById('uploadImage').addEventListener('click', async () => {
+            const fileInput = document.getElementById('imageUpload');
+            if (!fileInput.files.length) {
+                document.getElementById('status').innerText = "Please select an image file first.";
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: reader.result })
+                    });
+                    const result = await response.json();
+                    document.getElementById('status').innerText = result.message;
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    document.getElementById('status').innerText = "Error uploading image.";
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    </script>
+</body>
+</html>
